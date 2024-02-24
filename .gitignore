@@ -1,0 +1,12 @@
+misc_files/
+old_version/
+*.p
+*.p.bak
+*.p.save
+*.txt
+*.csv
+*.csv.save
+*.bak
+*.temp
+*.xlsx
+
