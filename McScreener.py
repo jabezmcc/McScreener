@@ -15,10 +15,13 @@ from bs4 import BeautifulSoup
 from platform import system
 import xlsxwriter
 
+version = "0.1"
+
 Ui_MainWindow, QMainWindow = loadUiType('McScreener_main.ui') 
 Ui_downloading_hist, Qdownloading_hist = loadUiType('Downloading_hist.ui')
 Ui_continuing_hist, Qcontinuing_hist = loadUiType('Continuing_hist.ui')
-Ui_fund_downloading,Qfund_downloading = loadUiType('Fundamental_downloading.ui')
+Ui_fund_downloading, Qfund_downloading = loadUiType('Fundamental_downloading.ui')
+Ui_aboutMcScreener, QaboutMcScreener = loadUiType('aboutMcScreener.ui')
 
 user_agents = [
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36'
@@ -35,6 +38,8 @@ class Main(QMainWindow, Ui_MainWindow):
         super(Main,self).__init__()
         self.setupUi(self)
         self.actionQuit.triggered.connect(self.quit)
+        self.actionAbout.triggered.connect(self.openabout)
+        self.actionDocumentation.triggered.connect(self.openDocs)
         # read in previous data
         if os.path.isfile('goodlist.csv'):
             self.goodlist = self.read_goodlist()
@@ -125,10 +130,14 @@ class Main(QMainWindow, Ui_MainWindow):
         newfunddata={}
         ndl = 0
         self.msg = Fundamental_downloading()
+        self.msg.funddl_progress.reset()
         self.msg.status_msg_label.setText('Downloading data...')        
         self.msg.OK_pushButton.setEnabled(False)
-        self.msg.show()        
-        for tick in self.goodlist:
+        self.msg.show() 
+        nticks = len(self.goodlist)       
+        for i in range(nticks):
+            tick = self.goodlist[i]
+            self.msg.funddl_progress.setValue(int(i*100/nticks))
             newfunddata[tick] = get_fund_data(tick)
             if  newfunddata[tick][1] != '': 
                 self.msg.status_msg_label.setText('Downloaded fundamental data for '+tick)
@@ -392,7 +401,8 @@ class Main(QMainWindow, Ui_MainWindow):
         self.annretFail_label.setText(str(ar_fail)+' stocks failed the ann. ret. test.')
         self.stddevFail_label.setText(str(sd_fail)+' stocks failed the std. dev. test.')
         self.stocksSaved_label.setText(str(len(self.goodlist))+" stocks from most recent performance screen saved for fundamental analysis.")
-        self.lastPerf.setText('Last performance screen on '+self.gldatestr+' yielded '+str(len(self.goodlist))+' possible stocks.')
+        today = datetime.now().strftime('%m-%d-%Y')
+        self.lastPerf.setText('Last performance screen on '+today+' yielded '+str(len(self.goodlist))+' possible stocks.')
         with open('goodlist.csv', 'w', newline = '') as csvfile:
             writer = csv.writer(csvfile, dialect = 'excel')
             for tick in self.goodlist:
@@ -401,6 +411,24 @@ class Main(QMainWindow, Ui_MainWindow):
         flagfile = open('needfundscreen','w')
         flagfile.write('yes')
         flagfile.close()
+
+    def openDocs(self):
+        try:
+            if system() == 'Linux':
+                err = os.system('xdg-open documentation.pdf')       
+            elif system() == 'Windows':
+                err = os.system('start documentation.pdf')
+            else:
+                err = os.system('open documentation.pdf') 
+        except:
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Warning)
+            msg.setText('Unable to open documentation file.') 
+            msg.setStandardButtons(QMessageBox.Ok)
+            msg.exec()  
+
+    def openabout(self):
+        self.aboutwin = AboutMcScreener()  
 
     def quit(self):
         self.close()
@@ -646,6 +674,33 @@ class Fundamental_downloading(Qfund_downloading, Ui_fund_downloading):
         
     def cancel(self):
         self.cancelflag = True
+        
+class AboutMcScreener(QaboutMcScreener, Ui_aboutMcScreener):
+    def __init__(self):
+        super(AboutMcScreener,self).__init__()
+        self.setupUi(self)
+        self.versionLabel.setText('Version '+version)
+        self.OKButt.clicked.connect(self.closeme)
+        self.licenseButt.clicked.connect(self.show_license)
+        self.show()
+        
+    def show_license(self):
+        try:
+            if system() == 'Linux':
+                err = os.system('xdg-open license.txt')       
+            elif system() == 'Windows':
+                err = os.system('start license.txt')
+            else:
+                err = os.system('open license.txt') 
+        except:
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Warning)
+            msg.setText('Unable to open license file.') 
+            msg.setStandardButtons(QMessageBox.Ok)
+            msg.exec()  
+            
+    def closeme(self):
+        self.close()
         
     
 def get_stats(tickdf):
