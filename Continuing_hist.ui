@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>498</width>
-    <height>285</height>
+    <height>281</height>
    </rect>
   </property>
   <property name="font">
@@ -31,10 +31,10 @@ background-color: rgb(231, 241, 255);
      <x>20</x>
      <y>20</y>
      <width>458</width>
-     <height>251</height>
+     <height>241</height>
     </rect>
    </property>
-   <layout class="QVBoxLayout" name="verticalLayout" stretch="4,3,3,3,5,6,7">
+   <layout class="QVBoxLayout" name="verticalLayout" stretch="4,3,3,3,5,0,0,0,0,6">
     <item>
      <widget class="QLabel" name="label">
       <property name="font">
@@ -219,11 +219,37 @@ QPushButton:pressed {
      </layout>
     </item>
     <item>
+     <spacer name="verticalSpacer">
+      <property name="orientation">
+       <enum>Qt::Vertical</enum>
+      </property>
+      <property name="sizeHint" stdset="0">
+       <size>
+        <width>20</width>
+        <height>40</height>
+       </size>
+      </property>
+     </spacer>
+    </item>
+    <item alignment="Qt::AlignVCenter">
+     <widget class="QProgressBar" name="conthistdl_progress">
+      <property name="maximumSize">
+       <size>
+        <width>16777215</width>
+        <height>15</height>
+       </size>
+      </property>
+      <property name="value">
+       <number>0</number>
+      </property>
+     </widget>
+    </item>
+    <item>
      <widget class="QLabel" name="cont_download_status_label">
       <property name="maximumSize">
        <size>
         <width>16777215</width>
-        <height>30</height>
+        <height>20</height>
        </size>
       </property>
       <property name="font">
@@ -236,6 +262,19 @@ QPushButton:pressed {
        <string>Downloading history for TICK</string>
       </property>
      </widget>
+    </item>
+    <item>
+     <spacer name="verticalSpacer_2">
+      <property name="orientation">
+       <enum>Qt::Vertical</enum>
+      </property>
+      <property name="sizeHint" stdset="0">
+       <size>
+        <width>20</width>
+        <height>40</height>
+       </size>
+      </property>
+     </spacer>
     </item>
     <item>
      <layout class="QHBoxLayout" name="horizontalLayout" stretch="5,1,5,1,2">

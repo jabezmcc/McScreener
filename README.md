@@ -25,3 +25,4 @@ The screening process then turns to fundamental analysis.  Whether the price is 
 The program is written in Python. Assuming you have Python installed, simply clone the repository, create a virtual environment, and run `pip install requirements.txt`.  Then run `python McScreener.py`.  Someday I may make a Windows executable.  
   
 ### Usage
+The first thing you need to do is download 10 years of data for as many stocks as possible.  Click on the Performance Screen tab and then press "Download new hitorical data".  The program then downloads a list of ticker symbols of all stocks in the NYSE and the NASDAQ. The ticker list is obtained from www.nasdaqtrader.com, Only domestic stocks that are not "test issues" or ETFs are kept.  A window then opens offering you the opportunity to download the historical price data.  Enter the desired number of years (default 10) and press "Yes".   
