@@ -3,11 +3,12 @@ old_version/
 *.p
 *.p.bak
 *.p.save
-*.txt
 *.csv
 *.csv.save
 *.bak
 *.temp
 *.xlsx
 *.pdf
+perf_logfile.txt
+fund_logfile.txt
 
