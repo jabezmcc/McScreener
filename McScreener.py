@@ -748,7 +748,6 @@ class AboutMcScreener(QaboutMcScreener, Ui_aboutMcScreener):
     def closeme(self):
         self.close()
         
-    
 def get_stats(tickdf):
     pricedate = [x[1] for x in list(tickdf.index.values)]
     closeprice = list(tickdf['adjclose'])
