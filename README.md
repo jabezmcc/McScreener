@@ -23,19 +23,19 @@ There is a lot of data out there on the internet.  This software begins by downl
 The screening process then turns to fundamental analysis.  Whether the price is reasonable is judged by the price to earnings ratio and the price to book ratio.  Whether the business is fundamentally a good one is judged by the profit margin, the 5-year earnings-per-share growth, and the 5-year sales growth (again, looking for long term trends).  Debt, measured by the current ratio and the debt-to-equity ratio, is used to judge how the company manages risk: some debt is good, to leverage growth, but too much is risky.    
 
 ### Installation
-The program is written in Python 3 and developed under Linux.  It should also run under Winodws and macOS, but has not been tested much. Fonts may be a little strange. The best way to install is to clone the repository (e.g., download the .zip file and extract in a suitable location), [create a virtual environment](https://realpython.com/intro-to-pyenv/), and run 
+The program is written in Python 3 and developed under Linux.  It should also run under Windows and MacOS, but has not been tested much. Fonts may be a little strange. The best way to install is to clone the repository (e.g., download the .zip file and extract in a suitable location).  Then [create a virtual environment](https://realpython.com/intro-to-pyenv/), and type 
 
 `pip install -r requirements.txt` 
 
-Then run 
+Then to run the program, type
 
 `python McScreener.py`  
 
-Alternatively you can skip the virual environment and run
+Alternatively you can skip the virual environment and, after downloading, extracting to a folder and `cd`-ing to the folder, type
 
  `pip install -r requirements.txt --user`  
  
- You may need to use `pip3` and `python3` instead, depending on your system. 
+ As before, running is done by typing `python McScreener.py`.  You may need to use `pip3` and `python3` instead, depending on your system. 
   
 ### Usage
 The first thing you need to do is download historical price data for as many stocks as possible.  Click on the Performance Screen tab and then press "Download new historical data".  The program then downloads a list of ticker symbols of all stocks in the NYSE and the NASDAQ. The ticker list is obtained from www.nasdaqtrader.com. Only domestic stocks that are not "test issues" or ETFs are kept.  A window then opens offering you the opportunity to download the historical price data.  Enter the desired number of years (default 10) and press "Yes".  Downloading this data for several thousand stocks take a while.  The process is also slowed down on purpose to avoid being blocked as a possible robot. Fortunately this only needs to be done every 6 months or so. At any time you can cancel the download or pause it and pick it up later if desired.
