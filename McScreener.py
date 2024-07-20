@@ -341,10 +341,10 @@ class Main(QMainWindow, Ui_MainWindow):
             QApplication.processEvents()
         if self.dl.done: 
             self.pricehistdict = self.dl.pricehistdict
-        now = datetime.now().strftime('%m-%d-%Y')
-        self.perfHistLabel.setText('Last historical download on '+now+' yielded '+ \
-             str(len(self.pricehistdict))+' possible stocks with '+ \
-             self.dl.years_to_download.text()+' years of data.') 
+            now = datetime.now().strftime('%m-%d-%Y')
+            self.perfHistLabel.setText('Last historical download on '+now+' yielded '+ \
+                 str(len(self.pricehistdict))+' possible stocks with '+ \
+                 self.dl.years_to_download.text()+' years of data.') 
         
     def continuepaused(self):
         self.contpaused = Continuing_hist()
