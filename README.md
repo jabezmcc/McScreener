@@ -43,7 +43,7 @@ The first thing you need to do is download historical price data for as many sto
 #### Performance screen
 Once you've downloaded all the data you then screen it for performance over the period you've downloaded (e.g., 10 years).
 
-![perfscreen](PerfScreenshot.png)
+![Performance Screen](PerfScreenshot.png)
 
 Four criteria are offered, each of which can be toggled on or off independently:
 
@@ -57,11 +57,12 @@ Four criteria are offered, each of which can be toggled on or off independently:
 
 The performance screen can be run as many times as you like on the downloaded data, experimenting with different criteria. In the end you should have selected a couple hundred stocks to proceed to fundamental screening.
 
+![Fundamental Screen](FundScreenshot.png)
+
 #### Fundamental screen
 
 Click on the Fundamental Screen tab to apply fundamental criteria to the performance-screened stocks.  If a performance screen has recently been performed, a new set of fundamental data needs to be downloaded.  Click on "Download new fundamental data" and data will be scraped from the website [finviz.com](https://www.finviz.com).  
 
-![fundscreen](FundScreenshot.png)
 
 The following criteria are available for fundamental screening using minimum and maximum values, with suggested defaults.  
 
@@ -76,6 +77,10 @@ The following criteria are available for fundamental screening using minimum and
 Each criterion can also be given a relative weight.  The absolute value of the weight doesn't matter, only its value relative to the other weights.  For more information on the meaning of these criteria and how they can be used, see, for example, [investopedia.com](https://www.investopiedia.com).
 
 When the fundamental screen is run, each stock is given a score according to whether the criteria are met.  A score of 100 means all criteria are met.  You can choose a score cut-off (default 80), below which stocks are rejected.  Depending on the criteria, the results can sometimes be dominated by banks, because of the way they are valuated relative to other stocks. In this case it can be useful to check "reject banks" to avoid this. After running a fundamental screen, click on "Open result in spreadsheet" to view the selected stocks.  Note you will need to have a spreadsheet program like Excel or LibreOffice Calc installed and set as the default spreadsheet opener. Typically you will want to have a dozen or more to choose from and do further research on. 
+
+#### Selling
+
+This program can suggest stocks to buy, but it does not address the question of when or if to sell a stock.  Generally, the best approach is "buy and hold": just keep adding to your portfolio and never sell anything.  Well, that's almost true, but there are actually times when it is no longer a good idea to hold on to a stock.  My approach is to apply the same fundamental criteria used for selection, perhaps with somewhat less stringent criteria, to all stocks being held.  The idea is to ask yourself, would I buy this stock today?  You want to ask, what's the prospect going forward from now? I also don't do anything for at least 3 years after purchasing a stock, just to ensure that any negative trends observed are not just fluctuations.  The program currently doesn't provide this screening, but it's still probably a good idea to check the fundamental data of any stock you own every quarter or so.  If things look bad, you should consider selling and trying a new stock.      
 
 ### Conclusion
 
