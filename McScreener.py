@@ -15,7 +15,7 @@ from bs4 import BeautifulSoup
 from platform import system
 import xlsxwriter
 
-version = "0.1"
+version = "0.1.1"
 
 Ui_MainWindow, QMainWindow = loadUiType('McScreener_main.ui') 
 Ui_downloading_hist, Qdownloading_hist = loadUiType('Downloading_hist.ui')
