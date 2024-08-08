@@ -47,17 +47,17 @@ class Main(QMainWindow, Ui_MainWindow):
             self.nogoodlist = False
         else:
             msg2 = QMessageBox()
-            msg2.setText('No performance-screened stocks found. You will need to run a screen on the Performance Screen tab.')
+            msg2.setText('No performance-screened stocks found, please run a screen on the performance screen tab.')
             msg2.exec() 
             self.lastPerf.setText('No previous screened history found.')
             self.nogoodlist = True
         if os.path.isfile('pricehistdict.p'):
             self.pricehistdict = pickle.load(open("pricehistdict.p","rb"))
-            self.nohist = False
             self.set_lastHist()
+            self.nohist = False
         else:
             msg = QMessageBox()
-            msg.setText('No previous history found. You will need to download some price history from the Performance Screen tab.')
+            msg.setText('No previous history found, please go to performance screen tab and download some price history.')
             msg.exec()
             self.perfHistLabel.setText('No previous history found.')
             self.nohist = True
@@ -66,7 +66,7 @@ class Main(QMainWindow, Ui_MainWindow):
             self.set_lastFund()
         else:
             msg3 = QMessageBox()
-            msg3.setText('No fundamental data found. You will need to download fundamental data from the Fundamental Screen tab.')
+            msg3.setText('No fundamental data found.')
             msg3.exec()            
             self.lastFund.setText('No fundamental data found.')
         if os.path.isfile('pricehistdict_paused.p'):
@@ -109,20 +109,19 @@ class Main(QMainWindow, Ui_MainWindow):
         phddatestr = datetime.fromtimestamp(phdstamp).strftime('%m/%d/%Y')
         if not self.nogoodlist:
             glstamp = os.path.getmtime('goodlist.csv')
-            self.gldatestr = datetime.fromtimestamp(glstamp).strftime('%m/%d/%Y')          
+            self.gldatestr = datetime.fromtimestamp(glstamp).strftime('%m/%d/%Y')
         else:
-            self.gldatestr = '--/--/----'
+            self.gldatestr = "--/--/----"
         nticks = str(len(self.pricehistdict))
         lastdate = self.pricehistdict[list(self.pricehistdict.keys())[0]].index[-1][1]
         if isinstance(lastdate, datetime): lastdate = lastdate.date()
         firstdate = self.pricehistdict[list(self.pricehistdict.keys())[0]].index[0][1]
         if isinstance(firstdate, datetime): firstdate = firstdate.date()
         nyears = str(int(round((lastdate-firstdate).days/365.2425)))
-        print(self.nohist)
-        if not self.nogoodlist:
-            self.lastPerf.setText('Last performance screen on '+self.gldatestr+' yielded '+str(len(self.goodlist))+' possible stocks.')
+        if self.nogoodlist:
+            self.lastPerf.setText('No performance screen results so far') 
         else:
-            self.lastPerf.setText('No previous performance screen')
+            self.lastPerf.setText('Last performance screen on '+self.gldatestr+' yielded '+str(len(self.goodlist))+' possible stocks.')
         self.perfHistLabel.setText('Last historical download on '+phddatestr+' yielded '+str(nticks)+' possible stocks with '+str(nyears)+' years of data.') 
 
     def set_lastFund(self):
@@ -131,14 +130,6 @@ class Main(QMainWindow, Ui_MainWindow):
         self.lastFund.setText('Last fundamental download '+datestr)
 
     def downloadnewfund(self):
-        oktoproceed = os.path.isfile('goodlist.csv') and not self.nohist
-        if not oktoproceed: 
-            msg = QMessageBox()
-            msg.setIcon(QMessageBox.Information)
-            msg.setText('Please download and screen price history from the Performance Screen tab first.')
-            msg.setStandardButtons(QMessageBox.Ok)
-            msg.exec()
-            return 
         if os.path.isfile('fund_logfile.txt'):
             os.replace('fund_logfile.txt','fund_logfile.bak')
         fundlogfile = open('fund_logfile.txt','w')
@@ -185,14 +176,6 @@ class Main(QMainWindow, Ui_MainWindow):
         self.msg.OK_pushButton.setEnabled(True)
 
     def runfundscreen(self):
-        oktoproceed = os.path.isfile('needfundscreen') and os.path.isfile('goodlist.csv')
-        if not oktoproceed:
-            msg = QMessageBox()
-            msg.setIcon(QMessageBox.Information)
-            msg.setText('Please download and screen price history from the Performance Screen tab first.')
-            msg.setStandardButtons(QMessageBox.Ok)
-            msg.exec()
-            return    
         flagfile = open('needfundscreen','r')
         flag = flagfile.read().strip()
         flagfile.close()
@@ -341,10 +324,10 @@ class Main(QMainWindow, Ui_MainWindow):
             QApplication.processEvents()
         if self.dl.done: 
             self.pricehistdict = self.dl.pricehistdict
-            now = datetime.now().strftime('%m-%d-%Y')
-            self.perfHistLabel.setText('Last historical download on '+now+' yielded '+ \
-                 str(len(self.pricehistdict))+' possible stocks with '+ \
-                 self.dl.years_to_download.text()+' years of data.') 
+        now = datetime.now().strftime('%m-%d-%Y')
+        self.perfHistLabel.setText('Last historical download on '+now+' yielded '+ \
+             str(len(self.pricehistdict))+' possible stocks with '+ \
+             self.dl.years_to_download.text()+' years of data.') 
         
     def continuepaused(self):
         self.contpaused = Continuing_hist()
@@ -361,13 +344,6 @@ class Main(QMainWindow, Ui_MainWindow):
         if os.path.isfile('perf_logfile.txt'):
             os.replace('perf_logfile.txt', 'perf_logfile.bak')
         perflogfile = open('perf_logfile.txt','w')
-        if self.nohist:
-            msg = QMessageBox()
-            msg.setIcon(QMessageBox.Information)
-            msg.setText('Please download price history first.')
-            msg.setStandardButtons(QMessageBox.Ok)
-            msg.exec()
-            return         
         lastdate = self.pricehistdict[list(self.pricehistdict.keys())[0]].index[-1][1]
         firstdate = self.pricehistdict[list(self.pricehistdict.keys())[0]].index[0][1]
         # Now compare price data to S&P 500
