@@ -137,7 +137,7 @@ background-color: rgb(231, 241, 255);
        </font>
       </property>
       <property name="text">
-       <string>This may take several hours.  Do you want to proceed?</string>
+       <string>This may take several minutes.  Do you want to proceed?</string>
       </property>
      </widget>
     </item>
@@ -291,7 +291,7 @@ QPushButton:pressed {
        </font>
       </property>
       <property name="text">
-       <string>Downloading history for TICK</string>
+       <string>Downloading...</string>
       </property>
      </widget>
     </item>
@@ -309,36 +309,7 @@ QPushButton:pressed {
      </spacer>
     </item>
     <item>
-     <layout class="QHBoxLayout" name="horizontalLayout" stretch="5,1,5,1,2">
-      <item>
-       <widget class="QPushButton" name="pauseButton">
-        <property name="minimumSize">
-         <size>
-          <width>140</width>
-          <height>35</height>
-         </size>
-        </property>
-        <property name="maximumSize">
-         <size>
-          <width>16777215</width>
-          <height>16777215</height>
-         </size>
-        </property>
-        <property name="font">
-         <font>
-          <family>Arial</family>
-          <pointsize>10</pointsize>
-         </font>
-        </property>
-        <property name="styleSheet">
-         <string notr="true"/>
-        </property>
-        <property name="text">
-         <string>Pause download and 
- continue later</string>
-        </property>
-       </widget>
-      </item>
+     <layout class="QHBoxLayout" name="horizontalLayout" stretch="1,2,4,1,1">
       <item>
        <spacer name="horizontalSpacer">
         <property name="orientation">
@@ -418,6 +389,19 @@ QPushButton:pressed {
          <string>OK</string>
         </property>
        </widget>
+      </item>
+      <item>
+       <spacer name="horizontalSpacer_7">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
       </item>
      </layout>
     </item>

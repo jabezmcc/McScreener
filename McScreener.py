@@ -1,11 +1,11 @@
-import sys, os, time, csv
+import sys, os, subprocess, time, csv
 from datetime import datetime, date, timezone, timedelta
 from PyQt5 import QtCore
 from PyQt5.QtWidgets import QApplication, QMessageBox
 from PyQt5.uic import loadUiType
 import pandas as pd
 import numpy as np
-import yahooquery as yq
+import yfinance as yf
 from pytz import timezone
 local_tz = timezone('America/New_York')
 import pickle, re
@@ -15,11 +15,10 @@ from bs4 import BeautifulSoup
 from platform import system
 import xlsxwriter
 
-version = "0.1.1"
+version = "0.2.0"
 
 Ui_MainWindow, QMainWindow = loadUiType('McScreener_main.ui') 
 Ui_downloading_hist, Qdownloading_hist = loadUiType('Downloading_hist.ui')
-Ui_continuing_hist, Qcontinuing_hist = loadUiType('Continuing_hist.ui')
 Ui_fund_downloading, Qfund_downloading = loadUiType('Fundamental_downloading.ui')
 Ui_aboutMcScreener, QaboutMcScreener = loadUiType('aboutMcScreener.ui')
 
@@ -69,22 +68,11 @@ class Main(QMainWindow, Ui_MainWindow):
             msg3.setText('No fundamental data found.')
             msg3.exec()            
             self.lastFund.setText('No fundamental data found.')
-        if os.path.isfile('pricehistdict_paused.p'):
-            pause_stamp = os.path.getmtime('pricehistdict_paused.p')
-            stampstr = datetime.fromtimestamp(pause_stamp).strftime('%m-%d-%Y %H:%M:%S')
-            self.partialStatusLabel.setText('Found a paused historical download created '+stampstr)
-            self.continuePausedButton.setStyleSheet('QPushButton:enabled { background-color #ffffff; color: #000000 }')
-        else:
-            self.partialStatusLabel.setText('No paused historical download found.')
-            self.continuePausedButton.setStyleSheet('QPushButton:!enabled { background-color #ffffff; color: #bebebe }')
-            self.continuePausedButton.setEnabled(False)
         self.downloadNewFund.clicked.connect(self.downloadnewfund)
         self.runFundScreen.clicked.connect(self.runfundscreen)
         self.resetCriteria.clicked.connect(self.resetcriteria)
         self.openResult.clicked.connect(self.openresult)
         self.downloadNewHist.clicked.connect(self.downloadnewhist)
-
-        self.continuePausedButton.clicked.connect(self.continuepaused)
         self.runPerfScreen.clicked.connect(self.runperfscreen)
         self.udFail_label.setText('')
         self.trendFail_label.setText('')
@@ -304,20 +292,25 @@ class Main(QMainWindow, Ui_MainWindow):
             ws.write_row(rownum,0,row)
             rownum +=1
         wb.close()
-        err = 0
-        if system() == 'Linux':
-            err = os.system('xdg-open ScreenResults.xlsx')       
-        elif system() == 'Windows':
-            err = os.system('start ScreenResults.xlsx')
-        else:
-            err = os.system('open ScreenResults.xlsx') 
-        if err:
+        try:
+            if system() == 'Windows':
+                os.startfile('ScreenResults.xlsx')
+            elif system() == 'Darwin':  # macOS
+                subprocess.Popen(['open', 'ScreenResults.xlsx'])
+            else:  # Linux
+                env = os.environ.copy()
+                for var in [k for k in env if any(x in k for x in 
+                            ['VIRTUAL_ENV', 'LD_LIBRARY', 'LD_PRELOAD', 'PYTHONPATH'])]:
+                    env.pop(var, None)
+                env['PATH'] = '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
+                subprocess.Popen(['xdg-open', 'ScreenResults.xlsx'], env=env, start_new_session=True)
+        except Exception as e:
             msg = QMessageBox()
             msg.setIcon(QMessageBox.Warning)
-            msg.setText('Unable to find a program to open xlsx file.') 
+            msg.setText(f'Unable to open xlsx file: {str(e)}')
             msg.setStandardButtons(QMessageBox.Ok)
-            msg.exec()           
-
+            msg.exec()
+         
     def downloadnewhist(self):
         self.dl = Downloading_hist()
         while self.dl.running == True:
@@ -329,31 +322,35 @@ class Main(QMainWindow, Ui_MainWindow):
              str(len(self.pricehistdict))+' possible stocks with '+ \
              self.dl.years_to_download.text()+' years of data.') 
         
-    def continuepaused(self):
-        self.contpaused = Continuing_hist()
-        while self.contpaused.running == True:
-            QApplication.processEvents()
-        if not self.contpaused.pause and not self.contpaused.cancel: 
-            self.pricehistdict = self.contpaused.pricehistdict
-        now = datetime.now().strftime('%m-%d-%Y')
-        self.perfHistLabel.setText('Last historical download on '+now+' yielded '+ \
-             str(len(self.pricehistdict))+' possible stocks with '+ \
-             str(self.contpaused.numyears)+' years of data.') 
-
     def runperfscreen(self):
         if os.path.isfile('perf_logfile.txt'):
             os.replace('perf_logfile.txt', 'perf_logfile.bak')
         perflogfile = open('perf_logfile.txt','w')
-        lastdate = self.pricehistdict[list(self.pricehistdict.keys())[0]].index[-1][1]
-        firstdate = self.pricehistdict[list(self.pricehistdict.keys())[0]].index[0][1]
+        first_ticker = list(self.pricehistdict.keys())[0]
+        first_df = self.pricehistdict[first_ticker]
+        if isinstance(first_df.index[0], tuple):
+            # Still has tuple structure (symbol, date)
+            firstdate = first_df.index[0][1]
+            lastdate = first_df.index[-1][1]
+        else:
+            # Just dates
+            firstdate = first_df.index[0]
+            lastdate = first_df.index[-1]
         # Now compare price data to S&P 500
         # First get S&P 500 data
-        yqtick = yq.Ticker('^GSPC')
-        SnPdf = yqtick.history(start=firstdate,end=lastdate,interval='1mo')
-        #yftick =yf.Ticker('^GSPC')
-        #SnPdf = yftick.history(start=firstdate,end=lastdate,interval='1mo')
-        nups_SnP,ndowns_SnP,trend_SnP,ann_ret_SnP,normstd_SnP = get_stats(SnPdf)
-        #print('SnP500',nups_SnP,ndowns_SnP,trend_SnP,ann_ret_SnP,normstd_SnP)   
+        SnPdf = yf.download(
+            tickers='^GSPC',
+            start=firstdate,
+            end=lastdate,
+            interval='1mo',
+            group_by='ticker',
+            auto_adjust=False,
+            progress=False
+            )
+        SnPdf = SnPdf.droplevel(level='Ticker',axis=1)
+        SnPdf.columns = SnPdf.columns.str.replace(' ','_')
+        SnPdf.columns = SnPdf.columns.str.lower()
+        nups_SnP,ndowns_SnP,trend_SnP,ann_ret_SnP,normstd_SnP = get_stats(SnPdf) 
         # Now iterate over the saved data
         now = datetime.now().strftime('%m-%d-%Y %H:%M:%S')
         perflogfile.write(now+' Starting to screen vs S&P500...\n')    
@@ -363,8 +360,9 @@ class Main(QMainWindow, Ui_MainWindow):
         trend_fail = 0
         ar_fail = 0
         sd_fail = 0
+        print('Starting loop...')
         for tick in ticklist:
-            nups,ndowns,trend,ann_ret,normstd = get_stats(self.pricehistdict[tick])
+            nups,ndowns,trend,ann_ret,normstd = get_stats(self.pricehistdict[tick].loc[tick])
             #print(tick,nups,ndowns,trend,ann_ret,normstd)
             keep_ud = True
             updown_factor = float(self.updown_lineEdit.text())             
@@ -439,6 +437,56 @@ class Main(QMainWindow, Ui_MainWindow):
     def quit(self):
         self.close()
 
+class DownloadThread(QtCore.QThread):
+    finished = QtCore.pyqtSignal(object)
+    progress = QtCore.pyqtSignal(int, int)  # current, total
+    canceled = QtCore.pyqtSignal()
+    
+    def __init__(self, tickers, start_date, end_date, chunk_size=100, delay=5):
+        super().__init__()
+        self.tickers = tickers
+        self.start_date = start_date
+        self.end_date = end_date
+        self.chunk_size = chunk_size
+        self.delay = delay
+        self.cancel = False
+    
+    def run(self):
+        all_dfs = []
+        total_chunks = (len(self.tickers) - 1) // self.chunk_size + 1
+        for i in range(0, len(self.tickers), self.chunk_size):
+            if self.cancel:
+                self.canceled.emit()
+                return
+            chunk = self.tickers[i:i+self.chunk_size]
+            chunk_num = i // self.chunk_size + 1
+            self.progress.emit(chunk_num, total_chunks)
+            try:
+                df = yf.download(
+                    tickers=chunk,
+                    start=self.start_date,
+                    end=self.end_date,
+                    interval='1mo',
+                    group_by='ticker',
+                    auto_adjust=False,
+                    progress=False,
+                    threads=True
+                )
+                if not df.empty:
+                    all_dfs.append(df)
+            except Exception as e:
+                print(f"Error downloading chunk {chunk_num}: {e}")
+                
+            # Delay between chunks
+            if i + self.chunk_size < len(self.tickers):
+                time.sleep(self.delay)
+        
+        # Combine all chunks
+        if all_dfs:
+            pricedf = pd.concat(all_dfs, axis=1)
+        else:
+            pricedf = pd.DataFrame()            
+        self.finished.emit(pricedf)
 
 class Downloading_hist(Qdownloading_hist, Ui_downloading_hist):
     def __init__(self):
@@ -454,12 +502,8 @@ class Downloading_hist(Qdownloading_hist, Ui_downloading_hist):
         self.noButton.clicked.connect(self.quit) 
         self.proceedButton.clicked.connect(self.download_hist_data)
         self.okButton.setEnabled(False)
-        self.pauseButton.setEnabled(False)
         self.cancelButton.setEnabled(False)
-        self.pause = False
-        self.pauseButton.clicked.connect(self.pause_download)
         self.cancel = False
-
         self.cancelButton.clicked.connect(self.cancelbutton)
         self.okButton.clicked.connect(self.quit) 
         if os.path.isfile('hist_logfile.txt'):
@@ -473,244 +517,72 @@ class Downloading_hist(Qdownloading_hist, Ui_downloading_hist):
         self.okButton.setEnabled(False)
         self.noButton.setEnabled(False)
         self.proceedButton.setEnabled(False)
-        self.pauseButton.setEnabled(True)
         self.cancelButton.setEnabled(True)
-        numyears = int(self.years_to_download.text())
+        self.newhistdl_progress.setRange(0,0)
+        self.numyears = int(self.years_to_download.text())
         lastday = datetime.now()-timedelta(days=1)
         lastday = lastday.date()
-        startday = lastday - timedelta(days=365.25*numyears+31)
-        self.pricehistdict = {} 
-        self.newhistdl_progress.reset()
-        self.blacklist = []
-        #max = 20 #for testing
-        max = len(self.allticklist)      
-        for i in range(0,max):
-            self.newhistdl_progress.setValue(int((i+1)*100/max))
-            if self.cancel:
-                break
-            if self.pause:
-                pickle.dump(self.blacklist,open("blacklist.p", "wb"))
-                pickle.dump([self.pricehistdict,numyears], open("pricehistdict_paused.p", "wb"))
-                now = datetime.now().strftime('%m-%d-%Y %H:%M:%S')
-                self.histlogfile.write(now+' Paused price history download.\n')
-                pause_stamp = os.path.getmtime('pricehistdict_paused.p')
-                stampstr = datetime.fromtimestamp(pause_stamp).strftime('%m-%d-%Y %H:%M:%S')
-                main.partialStatusLabel.setText('Found a paused historical download created '+stampstr)
-                main.continuePausedButton.setEnabled(True)
-                self.okButton.setEnabled(True) 
-                break 
-            tick = self.allticklist[i]
-            self.download_status_label.setText('Attempting to download '+str(numyears)+' yrs of data for '+tick+'.....('+str(i)+'/'+str(max)+')')
-            QApplication.processEvents()
-            yqtick = yq.Ticker(tick)
-            #yftick = yf.Ticker(tick)
-            try:
-                pricedf = yqtick.history(start=startday,end=lastday,interval='1mo')
-                #pricedf = yftick.history(start=startday,end=lastday,interval='1mo')
-                pricedf = pricedf.dropna(axis=0)
-                dt1 = pricedf.index[0][1] 
-                if isinstance(dt1,datetime): dt1 = dt1.date()
-                dt2 = startday+timedelta(days=30)                
-                if(dt1 <= dt2):
-                    self.pricehistdict[tick] = pricedf
-                    now = datetime.now().strftime('%m-%d-%Y %H:%M:%S')
-                    self.histlogfile.write(now+' Kept prices for '+tick+'\n')
-                    self.download_status_label.setText('Found sufficient data for '+tick)
-                else:
-                    self.download_status_label.setText('Insufficient data for '+tick)
-                    self.blacklist.append[tick]
-                    now = datetime.now().strftime('%m-%d-%Y %H:%M:%S')
-                    self.histlogfile.write(now+' Not enough data for '+tick+', first date is '+dt1.strftime('%Y-%m-%d')+'\n')
-                QApplication.processEvents()
-            except Exception as e: 
-                self.download_status_label.setText('Failed to download data for '+tick+' (see logfile.txt).')
-                self.blacklist.append(tick)
-                now = datetime.now().strftime('%m-%d-%Y %H:%M:%S')
-                self.histlogfile.write(now+' Failed to download data for '+tick+'\n'+str(e)+'\n')
-                time.sleep(1.0)
-                QApplication.processEvents()
-            time.sleep(1.0)
-        if self.cancel: 
-            self.histlogfile.close()
-            self.running = False
-            self.close()
-        if self.pause:
-            msg = QMessageBox()
-            msg.setText('Paused historical download and saved for continuing later')
-            msg.exec()
-            self.histlogfile.close()
-            self.running = False
-            self.close()
-        self.download_status_label.setText('Kept historical data for '+str(len(self.pricehistdict))+' tickers out of '+str(max)+',')
+        startday = lastday - timedelta(days=365.25*self.numyears+31)
+        self.download_status_label.setText("Downloading...")
+        # Start download thread
+        self.download_thread = DownloadThread(self.allticklist, startday, lastday)
+        self.download_thread.progress.connect(self.update_progress)
+        self.download_thread.finished.connect(self.download_finished)
+        self.download_thread.canceled.connect(self.download_canceled)
+        self.download_thread.start()
+
+    def update_progress(self,chunk_num, total_chunks):
+        self.download_status_label.setText(f"Downloading chunk {chunk_num}/{total_chunks}...")
+        self.newhistdl_progress.setRange(0, total_chunks)
+        self.newhistdl_progress.setValue(chunk_num)        
+        
+    def download_finished(self, pricedf):
+        pricedf = cleanup_download(pricedf)  
+        self.newhistdl_progress.setRange(0, 100)  # Back to normal mode
+        self.newhistdl_progress.setValue(100)
+        # get rid of dates with NaN 
+        date_coverage = pricedf.groupby(level='date')['adj_close'].count()
+        min_symbols = len(pricedf.index.get_level_values('symbol').unique()) * 0.1  # At least 10% coverage
+        valid_dates = date_coverage[date_coverage >= min_symbols].index
+        pricedf = pricedf.loc[pd.IndexSlice[:, valid_dates], :]
+        # keep only symbols with the maximum number of dates, (which should be 12+numyears)        
+        symbol_counts = pricedf.groupby(level='symbol')['adj_close'].count()
+        max_count = symbol_counts.max()
+        symbols_to_keep = symbol_counts[symbol_counts == max_count].index
+        self.download_status_label.setText('Found {} tickers with sufficient data out of {}.'.format(len(symbols_to_keep),len(self.allticklist)))
+        pricedf = pricedf.loc[symbols_to_keep]
+        self.pricehistdict = dict(list(pricedf.groupby(level='symbol')))
+  #      self.download_status_label.setText('Kept historical data for '+str(len(self.pricehistdict))+' tickers out of '+str(max)+',')
         self.ticklist=list(self.pricehistdict.keys())
-        if not self.cancel and not self.pause:
+        if not self.cancel:
             pickle.dump(self.pricehistdict, open("pricehistdict.p", "wb")) 
             now = datetime.now().strftime('%m-%d-%Y %H:%M:%S')
             self.histlogfile.write(now+' Finished download of '+str(len(self.pricehistdict))+' stock prices.\n')
-            if os.path.isfile('pricehistdict_paused.p'):
-                os.replace('pricehistdict_paused.p', 'pricehistdict_paused.p.bak')
-            main.partialStatusLabel.setText('No paused historical download found.')
-            main.continuePausedButton.setStyleSheet('QPushButton:!enabled { background-color #ffffff; color: #bebebe }')
-            main.continuePausedButton.setEnabled(False)
-            main.perfHistLabel.setText('Last historical download on '+now+' yielded '+str(len(self.pricehistdict))+' possible stocks with '+str(numyears)+' years of data.')
+            main.perfHistLabel.setText('Last historical download on '+now+' yielded '+str(len(self.pricehistdict))+
+            ' possible stocks with '+str(self.numyears)+' years of data.')
         self.okButton.setEnabled(True) 
-        self.cancelButton.setEnabled(False)
-        self.pauseButton.setEnabled(False)
         self.histlogfile.close()
         self.running = False
         self.done = True
- 
-    def quit(self):
-        self.running = False
-        self.close()
-    
-    def cancelbutton(self):
-        self.cancel = True
-        
-    def pause_download(self):
-        self.pause = True
- 
-class Continuing_hist(Qcontinuing_hist, Ui_continuing_hist):
-    def __init__(self):
-        super(Continuing_hist,self).__init__()
-        self.setupUi(self)
-        self.running = True
-        self.allticklist = get_tickers()
-        #self.allticklist = get_tickers()[:30]  #for testing
-        try:
-            self.blacklist = pickle.load(open("blacklist.p","rb"))
-        except:
-            self.blacklist = []
-        numticks = len(self.allticklist)
-        self.cont_foundTickersLabel.setText('Found '+str(numticks)+' tickers in the NYSE and NASDAQ.')    
-        self.cont_download_status_label.setText('')
-        self.cont_noButton.clicked.connect(self.quit) 
-        self.cont_proceedButton.clicked.connect(self.cont_download_hist_data)
-        self.pause = False
-        self.cont_pauseButton.clicked.connect(self.cont_pause_download)
-        self.cancel = False
-        self.cont_cancelButton.clicked.connect(self.cancelbutton)
-        self.cont_okButton.clicked.connect(self.quit) 
-        self.cont_okButton.setEnabled(False)
-        self.cont_pauseButton.setEnabled(False)
-        self.cont_cancelButton.setEnabled(False)
-        self.histlogfile = open('hist_logfile.txt','a')
-        paused_data = pickle.load(open("pricehistdict_paused.p","rb"))
-        self.pricehistdict = paused_data[0]
-        self.numyears =paused_data[1]
-        self.requiringLabel.setText('Requiring at least '+str(self.numyears)+' years of data.')  
-        self.doneticks = list(self.pricehistdict.keys())
-        print('done ticks =',self.doneticks)
-        print('blacklist =',self.blacklist)
-        self.ticks_toskip = list(set(self.doneticks) | set(self.blacklist))
-        self.ticks_todo = list(set(self.allticklist) - set(self.ticks_toskip))
-        print('ticks_toskip =',self.ticks_toskip)
-        print('ticks_todo =',self.ticks_todo)
-        self.nticks_toskip = len(self.ticks_toskip)
-        percent = int(self.nticks_toskip/(self.nticks_toskip+len(self.ticks_todo))*100) 
-        self.conthistdl_progress.setValue(percent)
-        self.tickersRemainingLabel.setText(str(len(self.ticks_todo))+' tickers remaining to download. Do you want to proceed?')
-        self.show()
 
-    def cont_download_hist_data(self):
-        self.cont_noButton.setEnabled(False)
-        self.cont_proceedButton.setEnabled(False)
-        self.cont_pauseButton.setEnabled(True)
-        self.cont_cancelButton.setEnabled(True)
-        lastday = self.pricehistdict[self.doneticks[0]].index[-1][1]
-        if isinstance(lastday,datetime): lastday = lastday.date()
-        startday = self.pricehistdict[self.doneticks[0]].index[0][1]
-        if isinstance(startday,datetime): startday = startday.date()
-        max = len(self.ticks_todo)    
-        for i in range(0,max):
-            if self.cancel:
-                break
-            if self.pause:
-                pickle.dump([self.pricehistdict,self.numyears], open("pricehistdict_paused.p", "wb"))
-                pickle.dump(self.blacklist, open("blacklist.p", "wb"))
-                now = datetime.now().strftime('%m-%d-%Y %H:%M:%S')
-                self.histlogfile.write(now+' Paused price history download.\n')
-                pause_stamp = os.path.getmtime('pricehistdict_paused.p')
-                stampstr = datetime.fromtimestamp(pause_stamp).strftime('%m-%d-%Y %H:%M:%S')
-                main.partialStatusLabel.setText('Found a paused historical download created '+stampstr)
-                main.continuePausedButton.setEnabled(True)
-                self.cont_okButton.setEnabled(True) 
-                break 
-            numerator = i+1+self.nticks_toskip
-            denom = self.nticks_toskip+len(self.ticks_todo)
-            percent =int(numerator/denom*100)
-            self.conthistdl_progress.setValue(percent)
-            QApplication.processEvents()
-            tick = self.ticks_todo[i]
-            self.cont_download_status_label.setText('Attempting to download '+str(self.numyears)+' yrs of data for '+tick+'...('+str(i)+'/'+str(max)+')')
-            yqtick = yq.Ticker(tick)
-            #yftick = yf.Ticker(tick)
-            try:
-                pricedf = yqtick.history(start=startday,end=lastday,interval='1mo')
-                pricedf = pricedf.dropna(axis=0)
-                dt1 = pricedf.index[0][1]
-                if isinstance(dt1,datetime): dt1 = dt1.date()
-                dt2 = startday+timedelta(days=30)             
-                if(dt1 <= dt2):
-                    self.pricehistdict[tick] = pricedf
-                    self.download_status_label.setText('Found sufficient data for '+tick)
-                    now = datetime.now().strftime('%m-%d-%Y %H:%M:%S')
-                    self.histlogfile.write(now+' Kept prices for '+tick+'\n')
-                else:
-                    now = datetime.now().strftime('%m-%d-%Y %H:%M:%S')
-                    self.download_status_label.setText('Insufficient data for '+tick)
-                    self.blacklist.append(tick)
-                    self.histlogfile.write(now+' Not enough data for '+tick+', first date is '+dt1.strftime('%Y-%m-%d')+'\n')
-                QApplication.processEvents()
-            except Exception as e: 
-                self.cont_download_status_label.setText('Failed to download data for '+tick+' (see logfile.txt).')
-                self.blacklist.append(tick)
-                now = datetime.now().strftime('%m-%d-%Y %H:%M:%S')
-                self.histlogfile.write(now+' Failed to download data for '+tick+'...'+str(e)+'\n')
-                QApplication.processEvents()
-                time.sleep(1.0)
-            time.sleep(1.0)
-        if self.cancel: 
-            self.histlogfile.close()
-            self.running = False
-            self.close()
-        if self.pause:
-            msg = QMessageBox()
-            msg.setText('Paused historical download and saved for continuing later')
-            msg.exec()
-            self.histlogfile.close()
-            self.running = False
-            self.close()
-        self.cont_download_status_label.setText('Kept historical data for '+str(len(self.pricehistdict))+' tickers out of '+str(max)+',')
-        self.ticklist=list(self.pricehistdict.keys())
-        if not self.cancel and not self.pause:
-            pickle.dump(self.pricehistdict, open("pricehistdict.p", "wb"))  
-            now = datetime.now().strftime('%m-%d-%Y %H:%M:%S')
-            self.histlogfile.write(now+' Finished download of '+str(len(self.pricehistdict))+' stock prices.\n')
-            if os.path.isfile('pricehistdict_paused.p'):
-                os.replace('pricehistdict_paused.p', 'pricehistdict_paused.p.bak')
-            self.tickersRemainingLabel.setText('Finished download.')
-            main.partialStatusLabel.setText('No paused historical download found.')
-            main.continuePausedButton.setStyleSheet('QPushButton:!enabled { background-color #ffffff; color: #bebebe }')
-            main.continuePausedButton.setEnabled(False)
-            main.perfHistLabel.setText('Last historical download on '+now+' yielded '+str(len(self.pricehistdict))+' possible stocks with '+str(self.numyears)+' years of data.')
-        self.cont_okButton.setEnabled(True)
-        self.cont_noButton.setEnabled(False)
-        self.cont_proceedButton.setEnabled(False)
-        self.cont_pauseButton.setEnabled(False)
-        self.cont_cancelButton.setEnabled(False)
-        self.histlogfile.close()
+    def download_canceled(self):
+        """Handle when download is canceled"""
+        self.download_status_label.setText("Download canceled.")
+        self.newhistdl_progress.setRange(0, 100)
+        self.newhistdl_progress.setValue(0)
+        self.okButton.setEnabled(True)
+        self.cancelButton.setEnabled(False)
         self.running = False
-        
+
     def quit(self):
         self.running = False
         self.close()
     
     def cancelbutton(self):
         self.cancel = True
-        
-    def cont_pause_download(self):
-        self.pause = True       
+        if hasattr(self, 'download_thread') and self.download_thread.isRunning():
+            self.download_thread.cancel = True  # Set the thread's cancel flag
+            self.download_status_label.setText("Canceling download...")
  
 class Fundamental_downloading(Qfund_downloading, Ui_fund_downloading):
     def __init__(self):
@@ -755,8 +627,8 @@ class AboutMcScreener(QaboutMcScreener, Ui_aboutMcScreener):
         self.close()
         
 def get_stats(tickdf):
-    pricedate = [x[1] for x in list(tickdf.index.values)]
-    closeprice = list(tickdf['adjclose'])
+    pricedate = np.array(tickdf.index.values)
+    closeprice = np.array(tickdf.loc[:,'adj_close'])
     yrlyrise = []
     ndowns = 0
     nups= 0
@@ -773,7 +645,7 @@ def get_stats(tickdf):
     datenum = []
     for x in pricedate:
         if isinstance(x,datetime): x = x.date()
-        datenum.append(float((x-date(1970,1,1)).days))
+        datenum.append(float((x-np.datetime64('1970-01-01')).astype('timedelta64[D]').item().days))
     p1, resid, rank, singvals, rcond = np.polyfit(datenum, logcloseprice, 1,full='True')
     trend = p1[0]
     ann_ret = (closeprice[-1]/closeprice[0])**(365.25/(datenum[-1] -datenum[0]))-1
@@ -807,7 +679,7 @@ def get_fund_data(tick):
             ProfitMargin = str(m.group(1))+'%'
         else:
             ProfitMargin='0'
-        m = re.search(r'EPS past 5Y(-*\d+\.\d+)',txt)
+        m = re.search(r'EPS past 3/5Y-*\d+\.\d+\% (\d+\.\d+)',txt)
         if(m):
             EPSgrowth = str(m.group(1))+'%'
         else:
@@ -822,7 +694,7 @@ def get_fund_data(tick):
             DebtToEquity = '%.2f' % (float(m.group(1)))
         else:
             DebtToEquity = '0'
-        m = re.search(r'Sales past 5Y(-*\d+\.\d+)',txt)
+        m = re.search(r'Sales past 3/5Y-*\d+\.\d+\% (\d+\.\d+)',txt)
         if(m):
             CashFlowGrowth = str(m.group(1))+'%'
         else:
@@ -885,7 +757,18 @@ def get_tickers():
     allticklist = allticklist + nyse_ticks['ACT Symbol'].to_list()
     return allticklist
 
-
+def cleanup_download(pricedf):
+    
+    # Reshape to MultiIndex format (symbol, date)
+    
+    pricedf = pricedf.stack(level=0, future_stack=True).rename_axis(['Date', 'symbol']).swaplevel()
+    pricedf.index.names = ['symbol', 'date']
+    
+    # Clean up column names (yfinance uses capital letters and spaces)
+    
+    pricedf.columns = pricedf.columns.str.lower().str.replace(' ', '_')
+    return pricedf
+   
 
 
 if __name__=="__main__":

@@ -1,5 +1,6 @@
 misc_files/
 old_version/
+version_0.1.1/
 *.p
 *.p.bak
 *.p.save
