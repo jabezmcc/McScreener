@@ -11,7 +11,7 @@ numpy==2.2.5
 pandas==2.2.3
 peewee==3.18.2
 platformdirs==4.5.0
-protobuf==6.33.4
+protobuf==6.33.5
 pycparser==2.23
 PyQt5==5.15.11
 PyQt5-Qt5==5.15.16
