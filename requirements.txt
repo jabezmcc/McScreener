@@ -31,7 +31,7 @@ tqdm==4.67.1
 typing_extensions==4.13.2
 tzdata==2025.2
 update==0.0.1
-urllib3==2.6.3
+urllib3==2.7.0
 websockets==15.0.1
 XlsxWriter==3.2.3
 yfinance==0.2.66
