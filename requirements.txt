@@ -4,7 +4,7 @@ cffi==2.0.0
 charset-normalizer==3.4.2
 curl_cffi==0.15.0
 frozendict==2.4.6
-idna==3.10
+idna==3.15
 lxml==6.1.0
 markdown-it-py==4.0.0
 mdurl==0.1.2
