@@ -2,6 +2,8 @@ misc_files/
 old_version/
 version_0.1.1/
 __pycache__/
+.venv
+*.pyc
 *.p
 *.p.bak
 *.p.save

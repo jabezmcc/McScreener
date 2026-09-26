@@ -1,0 +1,23 @@
+[project]
+name = "mcscreener"
+version = "0.1.0"
+description = "Add your description here"
+authors = [
+    { name = "Jabez McClelland", email = "mcchow@jcpd.net" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "numpy>=2.5.3",
+    "pandas>=3.0.6",
+    "pyqt5>=5.15.11",
+    "requests>=2.34.2",
+    "xlsxwriter>=3.2.9",
+    "yfinance>=1.7.0",
+]
+
+[project.scripts]
+mcscreener = "mcscreener:main"
+
+[build-system]
+requires = ["uv_build>=0.12.18,<0.13.0"]
+build-backend = "uv_build"
